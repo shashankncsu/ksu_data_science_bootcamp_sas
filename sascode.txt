@@ -1,0 +1,1132 @@
+/*reducing observation*/
+
+data baseball;
+set sashelp.baseball;
+run;
+
+DATA baseball;
+   set baseball;
+   if Team = 'Seattle' then DELETE;
+RUN;
+
+PROC PRINT data = baseball NOOBS;
+   title 'The baseball data set';
+RUN;
+
+DATA baseball;
+   set baseball;
+   Bogeyruns = 0.186*nHome + nRuns;
+   label Bogeyruns = 'nhome + nruns'
+         nhome = 'Home Runs';
+        
+   format Bogeyruns 4.1 ;
+RUN;
+
+PROC PRINT data = baseball NOOBS LABEL;
+   title 'The baseball data set';
+   var Name Team nHome nRuns;
+RUN; 
+
+DATA baseball;
+   set baseball;
+   TotalSalary + Salary;
+RUN;
+
+
+PROC FREQ DATA=baseball;
+    TABLES nRuns ;
+RUN;
+
+
+DATA baseball;
+   set baseball;
+     if nRuns = . then   Category = 'Unknown';       
+  else if nRuns <= 30 then Category = 'Low';
+  else if nRuns > 30 and nRuns lt 70 then Category= 'Medium';  
+  else Category = 'High';
+    RUN;
+
+PROC PRINT data = baseball NOOBS;
+   title 'The baseball data set';
+   var nRuns Category;
+RUN;
+
+
+
+
+
+
+PROC SORT data = baseball out = baseballsorted;
+  by Div;
+RUN;
+
+DATA baseballsorted;
+    set baseballsorted;
+by Div;
+firstDiv = first.Div;
+lastDiv = last.Div;
+RUN;
+
+
+
+
+DATA baseballsorted;
+    set baseballsorted;
+by Div;
+if first.Div then DivSalary = 0;
+DivSalary + Salary;
+if last.Div;
+format DivSalary 10.2;
+RUN;
+
+
+PROC PRINT data= storesales;
+   title 'Sales by Store';
+   id Store;
+   sum StoreTotal;
+RUN;
+
+
+
+
+  DATA ne (where = (Div='NE')) 
+       ae (where = (Div='AE'));
+     set baseball;
+     drop nRBI nBB ;
+  RUN;
+
+  PROC PRINT data=ne;
+    title 'Output Dataset: ne';
+  RUN;
+
+  PROC PRINT data=ae;
+    title 'Output Dataset: ae';
+  RUN;
+  
+  
+    DATA baseball_rename;
+    set baseball (rename=(nRuns=number_of_runs Div=Division_code));
+    RUN;
+
+
+ 
+ DATA baseball;
+   set baseball (firstobs=4 obs=25);
+ RUN;
+
+
+
+/*merging
+one to one*/
+
+DATA patients;
+    input ID Sex $ Age;
+DATALINES;
+ 1157    F     33
+ 2395    F     48
+ 1098    M     39
+ 4829    F     24
+ 3456    M     30
+ 5920    M     41
+ 1493    F     42
+ ;
+ RUN;
+ 
+ DATA scale;
+     input ID Height Weight;
+DATALINES;
+ 1157    65     122
+ 2395    64     130
+ 1098    70     178
+ 4829    67     142
+ 3456    72     190
+ 5920    71     188
+ ;
+ RUN;
+
+ DATA one2oneread;
+    set patients;
+set scale;
+ RUN;
+
+
+ 
+/*one to one merge*/
+
+DATA one;
+    input ID VarA $ VarB $;
+DATALINES;
+10 A1 B1
+20 A2 B2
+30 A3 B3
+  ;
+RUN;
+
+DATA two;
+   input ID VarB $ VarC $;
+   DATALINES;
+   40 B4 C1
+   50 B5 C2
+   ;
+RUN;
+
+DATA onetwomerged;
+   merge one two;
+RUN;
+
+PROC PRINT data = onetwomerged NOOBS;
+   title 'The onetwomerged data set';
+RUN; 
+
+/*concatenate*/
+
+DATA store1;
+    input Store Day $ Sales;
+DATALINES;
+1 M 1200
+1 T 1435
+1 W 1712
+1 R 1529
+1 F 1920
+1 S 2325
+;
+RUN;
+
+DATA store2;
+    input Store Day $ Sales;
+DATALINES;
+2 M 2215
+2 T 2458
+2 W 1798
+2 R 1692
+2 F 2105
+2 S 2847
+;
+RUN;
+
+DATA bothstores;
+    set store1 store2;
+RUN;
+
+PROC PRINT data = bothstores NOOBS;
+    title 'The bothstores data set';
+RUN;
+
+/*interleaving*/
+
+DATA one;
+   input year x;
+   DATALINES;
+   2000 1
+   2001 2
+   2002 3
+   2003 4
+   ;
+RUN;
+
+DATA two;
+   input year x;
+   DATALINES;
+   2001 5
+   2002 6
+   2003 7
+   2004 8
+   ;
+RUN;
+
+DATA three;
+    set one two;
+by year;
+RUN;
+
+PROC PRINT data = three NOOBS;
+   title 'The interleaved three data set';
+RUN;
+
+
+
+/*excluding unmatched variable*/
+DATA patients;
+   input id v_date : mmddyy8.;
+   format v_date mmddyy8.;
+   DATALINES;
+   110011 01/01/06
+   110012 01/02/06
+   110013 01/04/06
+   ;
+RUN;
+
+DATA allvoids;
+   input id v_date : mmddyy8. void_no volume;
+   format v_date mmddyy8.;
+   DATALINES;
+   110011  01/01/06 1 250
+   110011  01/01/06 2 300
+   110011  01/01/06 3 302
+   110011  01/01/06 4 231
+   110012  01/02/06 1 305
+   110012  01/02/06 2 225
+   110012  01/02/06 3 400
+   110013  01/04/06 1 300
+   110013  01/04/06 2 333
+   110013  01/04/06 3 401
+   110013  01/04/06 4 404
+   110014  01/06/06 1 398
+   110014  01/06/06 2 413
+;
+RUN;
+
+DATA analysis;
+  merge patients (in = inpatients)
+        allvoids (in = inallvoids);
+  by id v_date;
+  if inpatients and inallvoids;
+RUN;
+
+PROC PRINT data=analysis NOOBS; 
+  title 'The analysis data set'; 
+RUN;
+
+/*selecting variables*/
+
+DATA icdbdata (drop = v_type);
+    merge icdb.back (keep = subj b_date sex)
+     icdb.purg (where = (v_type = 0)
+            keep = subj v_type purg_1 purg_2)
+          icdb.fhx  (keep = subj fhx_1 fhx_2);
+by subj;
+RUN;
+
+PROC PRINT data = icdbdata (OBS = 10) NOOBS;
+     title 'The icdbdata data set';
+RUN; 
+
+ DATA subj210006 subj310032;
+   set stat481.icdblog;
+   if (subj = 210006) then output subj210006;
+ RUN;
+
+ PROC PRINT data = subj210006 NOOBS;
+   title 'The subj210006 data set';
+ RUN;
+
+
+/*retain statement*/ 
+
+data profits;
+ input month profit;
+ datalines;
+ 1 12451
+ 2 54325
+ 3 43514
+ 4 13455
+ 5 45161
+ 6 54151
+ 7 54261
+ 8 43251
+ 9 43515
+ 10 83711
+ 11 45236
+ 12 54361
+ ;
+run;
+
+
+data cumulative_profit_retain;
+ set profits;
+ retain cumulative_profit;
+ 
+ cumulative_profit = sum(profit,cumulative_profit);
+run;  
+
+DATA multiply (drop = i);
+   multiple = 0;
+   do i = 1 to 20;
+      multiple + 5;
+ output;
+   end;
+RUN;
+
+PROC PRINT NOOBS;
+   title 'Multiples of 5 up to 100';
+RUN;
+ 
+ 
+ 
+ DATA design;
+   DO i = 1 to 4;
+      DO j = 1 to 5;
+        output;
+ END;
+   END;
+RUN;
+
+PROC PRINT data = design;
+   TITLE '4 by 5 Factorial Design';
+RUN;
+
+
+DATA investment;
+     DO UNTIL (value >= 50000);
+     value + 1200;
+ value + value * 0.05;
+ year + 1;
+ OUTPUT;
+     END;
+RUN;
+
+PROC PRINT data = investment NOOBS;
+   title 'Years until at least $50,000';
+RUN;
+
+
+DATA investtwo;
+     DO WHILE (value >= 50000);
+     value + 1200;
+ value + value * 0.05;
+ year + 1;
+ OUTPUT;
+     END;
+RUN;
+
+PROC PRINT data = investtwo NOOBS;
+   title 'Years until at least $50,000';
+RUN;
+
+
+DATA investthree;
+     value = 0;
+     DO WHILE (value < 50000);
+     value + 1200;
+ value + value * 0.05;
+ year + 1;
+ OUTPUT;
+     END;
+RUN;
+
+PROC PRINT data = investthree NOOBS;
+   title 'Years until at least $50,000';
+RUN;
+
+
+ PROC FREQ data=baseball;
+    title 'Frequency Count of SEX and RACE';
+    tables Team Div;
+ RUN;
+ 
+ 
+ DATA auto ;
+  input MAKE $ PRICE MPG REP78 FOREIGN ;
+DATALINES;
+AMC    4099 22 3 0
+AMC    4749 17 3 0
+AMC    3799 22 3 0
+Audi   9690 17 5 1
+Audi   6295 23 3 1
+BMW    9735 25 4 1
+Buick  4816 20 3 0
+Buick  7827 15 4 0
+Buick  5788 18 3 0
+Buick  4453 26 3 0
+Buick  5189 20 3 0
+Buick 10372 16 3 0
+Buick  4082 19 3 0
+Cad.  11385 14 3 0
+Cad.  14500 14 2 0
+Cad.  15906 21 3 0
+Chev.  3299 29 3 0
+Chev.  5705 16 4 0
+Chev.  4504 22 3 0
+Chev.  5104 22 2 0
+Chev.  3667 24 2 0
+Chev.  3955 19 3 0
+Datsun 6229 23 4 1
+Datsun 4589 35 5 1
+Datsun 5079 24 4 1
+Datsun 8129 21 4 1
+;
+RUN;
+
+PROC PRINT DATA=auto(obs=10);
+RUN; 
+
+PROC FREQ DATA=auto;
+  TABLES make ;
+RUN;
+
+PROC FREQ DATA=auto;
+  TABLES rep78 ;
+RUN;
+
+PROC FREQ DATA=auto;
+  TABLES foreign ;
+RUN; 
+
+PROC FREQ DATA=auto;
+  TABLES rep78*foreign ;
+RUN; 
+
+PROC FREQ DATA=auto;
+  TABLES rep78*foreign / NOROW NOCOL NOFREQ ;
+RUN;
+
+
+ PROC MEANS DATA=auto;
+  VAR mpg;
+RUN;
+
+PROC MEANS DATA=auto;
+  CLASS foreign ;
+  VAR mpg;
+  Output Out=OutStat  Q1=LowerQ Median=Median Q3=UpperQ;
+RUN;
+
+Proc Means Data=SASHelp.cars noprint;
+Var MSRP;
+Class Origin DriveTrain;
+Output Out=OutStat Mean= STD= /autoname;
+Run;
+
+PROC UNIVARIATE DATA=auto;
+  CLASS foreign;
+  VAR mpg;
+RUN; 
+
+DATA auto ;
+  INPUT make $  mpg rep78 weight foreign ;
+CARDS;
+AMC     22 3 2930 0
+AMC     17 3 3350 0
+AMC     22 . 2640 0
+Audi    17 5 2830 1
+Audi    23 3 2070 1
+BMW     25 4 2650 1
+Buick   20 3 3250 0
+Buick   15 4 4080 0
+Buick   18 3 3670 0
+Buick   26 . 2230 0
+Buick   20 3 3280 0
+Buick   16 3 3880 0
+Buick   19 3 3400 0
+Cad.    14 3 4330 0
+Cad.    14 2 3900 0
+Cad.    21 3 4290 0
+Chev.   29 3 2110 0
+Chev.   16 4 3690 0
+Chev.   22 3 3180 0
+Chev.   22 2 3220 0
+Chev.   24 2 2750 0
+Chev.   19 3 3430 0
+Datsun  23 4 2370 1
+Datsun  35 5 2020 1
+Datsun  24 4 2280 1
+Datsun  21 4 2750 1
+;
+RUN;
+PROC CONTENTS DATA=auto;
+RUN;
+
+DATA  auto2;
+   SET auto;
+   LABEL  rep78  ="1978 Repair Record"
+          mpg    ="Miles Per Gallon"
+          foreign="Where Car Was Made";
+RUN;
+
+PROC CONTENTS DATA=auto2;
+RUN;
+
+
+PROC FORMAT;
+  VALUE  forgnf 0="domestic"
+                1="foreign" ;
+  VALUE  $makef "AMC"    ="American Motors"
+                "Buick"  ="Buick (GM)"
+                "Cad."   ="Cadillac (GM)"
+                "Chev."  ="Chevrolet (GM)"
+                "Datsun" ="Datsun (Nissan)";
+RUN;
+
+PROC FREQ DATA=auto2;
+   FORMAT  foreign forgnf.
+           make    $makef.;
+   TABLES foreign make;
+RUN;
+
+
+DATA getdata;
+  INPUT name $14. x test1 test2 test3;
+DATALINES;
+John Smith       4.2 86.5 84.55 81
+Samuel Adams     9.0 70.3 82.37 .
+Ben Johnson     -6.2 82.1 84.81 87
+Chris Adraktas   9.5 94.2 92.64 93
+John Brown        .  79.7 79.07 72
+;
+RUN;    
+
+
+DATA funct1;
+  SET getdata;
+  t1int = INT(test1);  t2int = INT(test2);      /* integer part of a number */
+  t1rnd = ROUND(test1);t2rnd = ROUND(test2,.1); /* round to nearest whole number */
+  tave = MEAN(test1, test2, test3);             /* mean across variables */
+RUN;
+ 
+PROC PRINT DATA=funct1;
+  VAR test1 test2 test3 t1int t2int t1rnd t2rnd tave;
+RUN; 
+
+DATA funct3;
+  SET getdata;
+  c1  = UPCASE(name);     /* convert to upper case */
+  c2  = SUBSTR(name,3,8); /* substring */
+  len = LENGTH(name);     /* length of string */
+  ind = INDEX(name,' ');  /* position in string */
+  fname = SUBSTR(name,1,INDEX(name,' '));
+  lname = SUBSTR(name,INDEX(name,' '));
+RUN;
+ 
+PROC PRINT DATA=funct3;
+  VAR name c1 c2 len ind fname lname;
+RUN; 
+
+/*UNIFORM(SEED) – generates values from a random uniform distribution between 0 and 1
+NORMAL(SEED) – generates values from a random normal distribution with mean 0 and standard deviation 1*/
+
+data random3;
+    x = UNIFORM(123456);
+    y = 50 + 3*NORMAL(123456);
+    IF x>.5 THEN coin = 'heads';
+      ELSE coin = 'tails';
+RUN;
+ 
+data random4;
+    x = UNIFORM(123456);
+    y = 50 + 3*NORMAL(123456);
+    IF x>.5 THEN coin = 'heads';
+      ELSE coin = 'tails';
+RUN;
+ 
+PROC PRINT DATA=random3;
+  VAR x y coin;
+RUN;
+PROC PRINT DATA=random4;
+  VAR x y coin;
+RUN;
+
+
+DATA random5;
+  DO i=1 to 100;
+    x = UNIFORM(123456);
+    IF x>.5 THEN coin = 'heads';
+      ELSE coin = 'tails';
+    OUTPUT;
+  END;
+RUN;
+
+
+/*Reshaping data from wide to long*/
+
+data wide1; 
+  input famid faminc96 faminc97 faminc98 ; 
+cards; 
+1 40000 40500 41000 
+2 45000 45400 45800 
+3 75000 76000 77000 
+; 
+run; 
+
+proc transpose data=wide1 out=long1;
+   by famid;
+run;
+
+proc print data=long1;
+run;
+
+
+data long1;
+  set long1 (rename=(col1=faminc));
+  year=input(substr(_name_, 7), 5.);
+  drop _name_;
+run; 
+
+proc print data=long1;
+run;
+
+data wide2 ; 
+  input famid faminc96 faminc97 faminc98 spend96 spend97 spend98 ; 
+cards ; 
+1 40000 40500 41000 38000 39000 40000 
+2 45000 45400 45800 42000 43000 44000 
+3 75000 76000 77000 70000 71000 72000 
+; 
+run ;
+
+proc transpose data=wide2 out=longf prefix=faminc ;
+   by famid;
+var faminc96-faminc98;
+run;
+
+proc transpose data=wide2 out=longs prefix=spend ;
+   by famid;
+var spend96-spend98;
+run;
+
+data long2;
+   merge longf (rename=(faminc1=faminc) drop=_name_) longs (rename=(spend1=spend));
+   by famid;
+   year=input(substr(_name_, 6), 5.);
+   drop _name_;
+run;
+
+proc print data=long2;
+run;
+
+/*Reshaping data from long to wide*/
+
+data long1 ; 
+  input famid year faminc ; 
+cards ; 
+1 96 40000 
+1 97 40500 
+1 98 41000 
+2 96 45000 
+2 97 45400 
+2 98 45800 
+3 96 75000 
+3 97 76000 
+3 98 77000 
+; 
+run;
+
+proc transpose data=long1 out=wide1 prefix=faminc;
+    by famid ;
+    id year;
+    var faminc;
+run;
+
+proc print data = wide1;
+run;
+
+data long2; 
+  input famid year faminc spend ; 
+cards; 
+1 96 40000 38000 
+1 97 40500 39000 
+1 98 41000 40000 
+2 96 45000 42000 
+2 97 45400 43000 
+2 98 45800 44000 
+3 96 75000 70000 
+3 97 76000 71000 
+3 98 77000 72000 
+; 
+run ;
+
+proc transpose data=long2 out=widef prefix=faminc;
+   by famid;
+   id year;
+   var faminc;
+run;
+
+proc transpose data=long2 out=wides prefix=spend;
+   by famid;
+   id year;
+   var spend;
+run;
+
+data wide2;
+    merge  widef(drop=_name_) wides(drop=_name_);
+    by famid;
+run;
+
+proc print data=wide2;
+run;
+
+/*graphics*/
+
+DATA auto ;
+  INPUT make $  mpg rep78 weight foreign ;
+CARDS;
+AMC     22 3 2930 0
+AMC     17 3 3350 0
+AMC     22 . 2640 0
+Audi    17 5 2830 1
+Audi    23 3 2070 1
+BMW     25 4 2650 1
+Buick   20 3 3250 0
+Buick   15 4 4080 0
+Buick   18 3 3670 0
+Buick   26 . 2230 0
+Buick   20 3 3280 0
+Buick   16 3 3880 0
+Buick   19 3 3400 0
+Cad.    14 3 4330 0
+Cad.    14 2 3900 0
+Cad.    21 3 4290 0
+Chev.   29 3 2110 0
+Chev.   16 4 3690 0
+Chev.   22 3 3180 0
+Chev.   22 2 3220 0
+Chev.   24 2 2750 0
+Chev.   19 3 3430 0
+Datsun  23 4 2370 1
+Datsun  35 5 2020 1
+Datsun  24 4 2280 1
+Datsun  21 4 2750 1
+;
+RUN;
+
+TITLE 'Simple Vertical Bar Chart ';
+PROC GCHART DATA=auto;
+      VBAR mpg;
+RUN;
+
+TITLE 'Bar Chart - Control Number of Bins';
+PROC GCHART DATA=auto;
+     VBAR mpg/LEVELS=7;
+RUN;
+
+TITLE 'Bar Chart with Discrete Option';
+PROC GCHART DATA=auto;
+      VBAR rep78/ DISCRETE;
+RUN;
+
+TITLE 'Horizontal Bar Chart with Discrete';
+PROC GCHART DATA=auto;
+      HBAR rep78/ DISCRETE;
+RUN;
+
+TITLE 'Pie Chart with Discrete';
+PROC GCHART DATA=auto;
+      PIE rep78/ DISCRETE VALUE=INSIDE
+                 PERCENT=INSIDE SLICE=OUTSIDE;
+RUN;
+
+TITLE 'Scatterplot - Two Variables';
+PROC GPLOT DATA=auto;
+     PLOT mpg*weight ;
+RUN;
+
+TITLE 'Scatterplot - Foreign/Domestic Marked';
+PROC GPLOT DATA=auto;
+     PLOT mpg*weight=foreign;
+RUN;
+
+SYMBOL1 V=circle C=black I=none;
+SYMBOL2 V=star   C=red   I=none;
+
+TITLE 'Scatterplot - Different Symbols';
+PROC GPLOT DATA=auto;
+     PLOT mpg*weight=foreign;
+RUN; 
+QUIT;
+
+SYMBOL1 V=circle C=blue I=r;
+
+TITLE 'Scatterplot - With Regression Line ';
+PROC GPLOT DATA=auto;
+     PLOT mpg*weight ;
+RUN;
+QUIT;
+
+/*statistical tests*/
+
+DATA auto ;
+  LENGTH make $ 20 ;
+  INPUT make $ 1-17 price mpg rep78 hdroom trunk weight 
+        length turn displ gratio foreign ;
+CARDS;
+AMC Concord        4099  . 3 2.5 11 2930 186 40 121 3.58 0
+AMC Pacer          4749  . 3 3.0 11 3350 173 40 258 2.53 0
+AMC Spirit         3799  . . 3.0 12 2640 168 35 121 3.08 0
+Audi 5000          9690 17 5 3.0 15 2830 189 37 131 3.20 1
+Audi Fox           6295 23 3 2.5 11 2070 174 36  97 3.70 1
+BMW 320i           9735 25 4 2.5 12 2650 177 34 121 3.64 1
+Buick Century      4816 20 3 4.5 16 3250 196 40 196 2.93 0
+Buick Electra      7827 15 4 4.0 20 4080 222 43 350 2.41 0
+Buick LeSabre      5788 18 3 4.0 21 3670 218 43 231 2.73 0
+Buick Opel         4453 26 . 3.0 10 2230 170 34 304 2.87 0
+Buick Regal        5189 20 3 2.0 16 3280 200 42 196 2.93 0
+Buick Riviera     10372 16 3 3.5 17 3880 207 43 231 2.93 0
+Buick Skylark      4082 19 3 3.5 13 3400 200 42 231 3.08 0
+Cad. Deville      11385 14 3 4.0 20 4330 221 44 425 2.28 0
+Cad. Eldorado     14500 14 2 3.5 16 3900 204 43 350 2.19 0
+Cad. Seville      15906 21 3 3.0 13 4290 204 45 350 2.24 0
+Chev. Chevette     3299 29 3 2.5  9 2110 163 34 231 2.93 0
+Chev. Impala       5705 16 4 4.0 20 3690 212 43 250 2.56 0
+Chev. Malibu       4504 22 3 3.5 17 3180 193 31 200 2.73 0
+Chev. Monte Carlo  5104 22 2 2.0 16 3220 200 41 200 2.73 0
+Chev. Monza        3667 24 2 2.0  7 2750 179 40 151 2.73 0
+Chev. Nova         3955 19 3 3.5 13 3430 197 43 250 2.56 0
+Datsun 200         6229 23 4 1.5  6 2370 170 35 119 3.89 1
+Datsun 210         4589 35 5 2.0  8 2020 165 32  85 3.70 1
+Datsun 510         5079 24 4 2.5  8 2280 170 34 119 3.54 1
+Datsun 810         8129 21 4 2.5  8 2750 184 38 146 3.55 1
+Dodge Colt         3984 30 5 2.0  8 2120 163 35  98 3.54 0
+Dodge Diplomat     4010 18 2 4.0 17 3600 206 46 318 2.47 0
+Dodge Magnum       5886 16 2 4.0 17 3600 206 46 318 2.47 0
+Dodge St. Regis    6342 17 2 4.5 21 3740 220 46 225 2.94 0
+Fiat Strada        4296 21 3 2.5 16 2130 161 36 105 3.37 1
+Ford Fiesta        4389 28 4 1.5  9 1800 147 33  98 3.15 0
+Ford Mustang       4187 21 3 2.0 10 2650 179 43 140 3.08 0
+Honda Accord       5799 25 5 3.0 10 2240 172 36 107 3.05 1
+Honda Civic        4499 28 4 2.5  5 1760 149 34  91 3.30 1
+Linc. Continental 11497 12 3 3.5 22 4840 233 51 400 2.47 0
+Linc. Mark V      13594 12 3 2.5 18 4720 230 48 400 2.47 0
+Linc. Versailles  13466 14 3 3.5 15 3830 201 41 302 2.47 0
+Mazda GLC          3995 30 4 3.5 11 1980 154 33  86 3.73 1
+Merc. Bobcat       3829 22 4 3.0  9 2580 169 39 140 2.73 0
+Merc. Cougar       5379 14 4 3.5 16 4060 221 48 302 2.75 0
+Merc. Marquis      6165 15 3 3.5 23 3720 212 44 302 2.26 0
+Merc. Monarch      4516 18 3 3.0 15 3370 198 41 250 2.43 0
+Merc. XR-7         6303 14 4 3.0 16 4130 217 45 302 2.75 0
+Merc. Zephyr       3291 20 3 3.5 17 2830 195 43 140 3.08 0
+Olds 98            8814 21 4 4.0 20 4060 220 43 350 2.41 0
+Olds Cutl Supr     5172 19 3 2.0 16 3310 198 42 231 2.93 0
+Olds Cutlass       4733 19 3 4.5 16 3300 198 42 231 2.93 0
+Olds Delta 88      4890 18 4 4.0 20 3690 218 42 231 2.73 0
+Olds Omega         4181 19 3 4.5 14 3370 200 43 231 3.08 0
+Olds Starfire      4195 24 1 2.0 10 2730 180 40 151 2.73 0
+Olds Toronado     10371 16 3 3.5 17 4030 206 43 350 2.41 0
+Peugeot 604       12990 14 . 3.5 14 3420 192 38 163 3.58 1
+Plym. Arrow        4647 28 3 2.0 11 3260 170 37 156 3.05 0
+Plym. Champ        4425 34 5 2.5 11 1800 157 37  86 2.97 0
+Plym. Horizon      4482 25 3 4.0 17 2200 165 36 105 3.37 0
+Plym. Sapporo      6486 26 . 1.5  8 2520 182 38 119 3.54 0
+Plym. Volare       4060 18 2 5.0 16 3330 201 44 225 3.23 0
+Pont. Catalina     5798 18 4 4.0 20 3700 214 42 231 2.73 0
+Pont. Firebird     4934 18 1 1.5  7 3470 198 42 231 3.08 0
+Pont. Grand Prix   5222 19 3 2.0 16 3210 201 45 231 2.93 0
+Pont. Le Mans      4723 19 3 3.5 17 3200 199 40 231 2.93 0
+Pont. Phoenix      4424 19 . 3.5 13 3420 203 43 231 3.08 0
+Pont. Sunbird      4172 24 2 2.0  7 2690 179 41 151 2.73 0
+Renault Le Car     3895 26 3 3.0 10 1830 142 34  79 3.72 1
+Subaru             3798 35 5 2.5 11 2050 164 36  97 3.81 1
+Toyota Celica      5899 18 5 2.5 14 2410 174 36 134 3.06 1
+Toyota Corolla     3748 31 5 3.0  9 2200 165 35  97 3.21 1
+Toyota Corona      5719 18 5 2.0 11 2670 175 36 134 3.05 1
+Volvo 260         11995 17 5 2.5 14 3170 193 37 163 2.98 1
+VW Dasher          7140 23 4 2.5 12 2160 172 36  97 3.74 1
+VW Diesel          5397 41 5 3.0 15 2040 155 35  90 3.78 1
+VW Rabbit          4697 25 4 3.0 15 1930 155 35  89 3.78 1
+VW Scirocco        6850 25 4 2.0 16 1990 156 36  97 3.78 1
+;
+RUN;
+
+
+PROC TTEST DATA=auto;
+  CLASS foreign;
+  VAR mpg;
+RUN;
+
+PROC CORR DATA=auto;
+  VAR price mpg weight ;
+RUN;
+
+PROC REG DATA=auto;
+  MODEL price = mpg weight ;
+RUN;
+
+PROC GLM DATA=auto;
+  WHERE (rep78 = 3) OR (rep78 = 4) OR (rep78 = 5);
+  CLASS rep78;
+  MODEL mpg = rep78 ;
+  MEANS rep78 / TUKEY ;
+RUN;
+
+/*SAS MACROS*/
+
+options nodate nonumber nocenter formdlim="-";
+data hsb2;
+  input  id female race ses prog
+         read write math science socst;
+datalines;
+ 70 0 4 1 1 57 52 41 47 57
+121 1 4 2 3 68 59 53 63 61
+ 86 0 4 3 1 44 33 54 58 31
+141 0 4 3 3 63 44 47 53 56
+172 0 4 2 2 47 52 57 53 61
+113 1 4 2 2 44 52 51 63 61
+ 50 0 3 2 1 50 59 42 53 61
+ 11 0 1 2 2 34 46 45 39 36
+ 84 0 4 2 1 63 57 54 51 63
+ 48 1 3 2 2 57 55 52 50 51
+ 75 1 4 2 3 60 46 51 53 61
+ 60 1 4 2 2 57 65 51 63 61
+ 95 0 4 3 2 73 60 71 61 71
+104 0 4 3 2 54 63 57 55 46
+ 38 0 3 1 2 45 57 50 31 56
+115 0 4 1 1 42 49 43 50 56
+ 76 0 4 3 2 47 52 51 50 56
+195 0 4 2 1 57 57 60 56 52
+;
+run;
+
+
+proc means data = hsb2;
+  var write math female socst;
+run;
+proc reg data = hsb2;
+  model read = write math female socst;
+run;
+quit;
+
+
+%let indvars = write math female socst;
+proc means data = hsb2;
+  var &indvars;
+run;
+
+proc reg data = hsb2;
+  model read = &indvars;
+run;
+quit;
+
+%put my first macro variable indvars is &indvars;
+
+%put _automatic_; 
+%put _user_;
+
+title "today's date is &SYSDATE9 and today is &SYSDAY";
+proc means data = hsb2;
+  var &indvarS;
+run;
+
+
+%put &indvars;
+
+
+%let newind = %upcase(&indvars);
+%put &newind;
+
+
+%let word2 = %scan(&indvars, 2);
+%put &word2;
+
+
+%let k = 1;
+%let tot = &k + 1;
+%put &tot;
+
+%let tot = %eval(&k + 1);
+%put &tot;
+
+%let tot = %eval(&k + 1.234);
+
+%let tot = %sysevalf(&k + 1.234);
+%put &tot;
+
+%macro combine(num);
+  data big;
+    set
+    %do i = 1 %to &num;
+      file&i
+    %end; 
+    ;
+  run;
+%mend;
+
+*executing the macro program;
+options mprint;
+%combine(3)
+
+data xxx;
+  input v1-v5 ind1 ind2;
+  cards;
+1 0 1 1 0 34 23
+0 0 1 0 1 22 32
+1 1 1 0 0 12 10
+0 1 0 1 1 56 90
+0 1 0 1 1 26 80
+1 1 0 0 0 46 45
+0 0 0 1 1 57 53
+1 1 0 0 0 22 77
+0 1 0 1 1 44 45
+1 1 0 0 0 41 72
+;
+run;
+
+proc logistic data = xxx descending;
+  model v1 = ind1 ind2;
+run;
+
+options mprint mlogic;
+%macro mylogit(num);
+  %do i = 1 %to &num;
+    proc logistic data=xxx des;
+      model v&i = ind1 ind2;
+    run;
+  %end;
+  %put &i;
+%mend;
+
+*executing the macro using 5 dependent variable;
+%mylogit(5)
+
+%macro mylogit1(all_deps, outest);
+  %let k=1;
+  %let dep = %scan(&all_deps, &k);
+  %do %while("&dep" NE "");
+    title "dependent variable is &dep";
+    proc logistic data=xxx des outest=_est&k;
+      model &dep = ind1 ind2;
+    run;
+    %let k = %eval(&k + 1);
+    %let dep = %scan(&all_deps, &k);
+  %end;
+  %if "&outest" NE "" %then 
+  %do;
+    data &outest;
+      set 
+      %do i = 1 %to &k - 1;
+        _est&i
+      %end; 
+      ;
+    run;	 
+    %let k = %eval(&k - 1);
+    proc datasets;
+      delete _est1 - _est&k;
+    run;
+  %end;
+  %else 
+  %do;
+     %put no dataset name was provided, files are not combined;
+  %end;
+%mend;
+%mylogit1(v1 v2 v3);
+
+%mylogit1(v1 v2 v3, a);
+proc print data = a;
+  var intercept ind1 ind2;
+run;
+
+
+%macro mylogita(indata, all_deps, indvars =, myout =_out );
+  %let k=1;
+  %let dep = %scan(&all_deps, &k);
+  %do %while(&dep NE);
+    title "The dependent variable is &dep";
+    title2 "The independent variables are &indvars";
+    proc logistic data=&indata des outest=est&k;
+      model &dep = &indvars;
+    run;
+    %let k = %eval(&k + 1);
+    %let dep = %scan(&all_deps, &k);
+  %end;
+  data &myout;
+    set 
+    %do i = 1 %to &k - 1;
+      est&i
+    %end; 
+    ;
+  run;
+%mend;
+*run the program;
+%mylogita(xxx, v1 v2 v3, indvars = ind1 ind2, myout = myparms)
+
+title;
+proc print data = myparms;
+  var _name_ intercept ind1 ind2;
+run;
